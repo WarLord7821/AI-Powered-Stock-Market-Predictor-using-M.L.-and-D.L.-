@@ -1,0 +1,11 @@
+flask
+flask-cors
+yfinance
+pandas
+numpy
+tensorflow
+scikit-learn
+nltk
+groq
+joblib
+gunicorn

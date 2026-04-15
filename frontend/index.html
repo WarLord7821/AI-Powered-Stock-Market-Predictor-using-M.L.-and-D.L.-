@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Stock Predictor Dashboard</title>
+    <style>
+        /* CSS: Trader Vibes / Dark Mode */
+        :root {
+            --bg-dark: #0d1117;
+            --panel-bg: #161b22;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --accent-blue: #58a6ff;
+            --bullish-green: #3fb950;
+            --bearish-red: #f85149;
+            --neutral-gold: #d29922;
+            --border-color: #30363d;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .dashboard {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            color: var(--text-main);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        /* Input Controls */
+        .input-group {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .input-field {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        button {
+            background-color: var(--accent-blue);
+            color: #ffffff;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #1f6feb;
+        }
+
+        /* Results Display */
+        #results {
+            display: none;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .signal-neutral { color: var(--neutral-gold); }
+        .signal-bullish { color: var(--bullish-green); }
+        .signal-bearish { color: var(--bearish-red); }
+
+        .llm-output {
+            background-color: #000000;
+            border-left: 4px solid var(--accent-blue);
+            padding: 15px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        /* Loading Spinner */
+        #loader {
+            display: none;
+            text-align: center;
+            color: var(--accent-blue);
+            font-family: 'Courier New', Courier, monospace;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <h1>Terminal | AI Stock Market Predictor</h1>
+    
+    <div class="panel">
+        <div class="input-group">
+            <div class="input-field">
+                <label for="ticker">Ticker Symbol</label>
+                <input type="text" id="ticker" placeholder="e.g. ORCL, AAPL, TCS.NS" value="ORCL">
+            </div>
+            <div class="input-field">
+                <label for="shares">Shares Owned</label>
+                <input type="number" id="shares" placeholder="0" value="0">
+            </div>
+            <button onclick="runAnalysis()">Run LSTM Pipeline</button>
+        </div>
+        <small style="color: var(--text-muted);">*Model utilizes 30-day sliding window & Live NLTK Sentiment Analysis.</small>
+    </div>
+
+    <div id="loader">
+        [CONNECTING TO PYTHON BACKEND...]<br>
+        [FETCHING LIVE MARKET DATA...]<br>
+        [RUNNING TENSORFLOW INFERENCE...]
+    </div>
+
+    <div id="results">
+        <div class="panel">
+            <h2 style="margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Analysis Output: <span id="res-ticker"></span></h2>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <label>Current Price</label>
+                    <div class="metric-value" id="res-price">-</div>
+                </div>
+                <div class="metric-card">
+                    <label>News Sentiment</label>
+                    <div class="metric-value" id="res-sentiment">-</div>
+                </div>
+                <div class="metric-card">
+                    <label>Signal Momentum</label>
+                    <div class="metric-value" id="res-signal">-</div>
+                </div>
+                <div class="metric-card">
+                    <label>Upward Prob.</label>
+                    <div class="metric-value" id="res-prob">-</div>
+                </div>
+                <div class="metric-card">
+                    <label>Final Advice</label>
+                    <div class="metric-value" id="res-advice">-</div>
+                </div>
+            </div>
+
+            <h3 style="color: var(--text-muted); text-transform: uppercase; font-size: 12px;">Groq Llama-3 Reasoning</h3>
+            <div class="llm-output" id="res-llm"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // AJAX: Connect to the Python Flask Server
+    async function runAnalysis() {
+        const ticker = document.getElementById('ticker').value.toUpperCase().trim();
+        const shares = parseInt(document.getElementById('shares').value) || 0;
+        
+        if(!ticker) {
+            alert("Please enter a valid ticker.");
+            return;
+        }
+
+        // Show loading UI
+        document.getElementById('results').style.display = 'none';
+        document.getElementById('loader').style.display = 'block';
+
+        try {
+            // Send HTTP POST request to Python API
+            // Replace this URL with your actual Render web service URL once deployed
+const BACKEND_URL = 'https://your-render-app-name.onrender.com'; 
+
+const response = await fetch(`${BACKEND_URL}/api/predict`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ticker: ticker, shares: shares })
+            });
+
+            const data = await response.json();
+
+            // Hide loader
+            document.getElementById('loader').style.display = 'none';
+
+            if(data.success) {
+                // Update UI with live data from Python
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('res-ticker').innerText = data.ticker;
+                // Check if the ticker ends in .NS (NSE) or .BO (BSE)
+let currencySymbol = (data.ticker.includes(".NS") || data.ticker.includes(".BO")) ? "₹" : "$";
+document.getElementById('res-price').innerText = currencySymbol + data.current_price;
+                document.getElementById('res-sentiment').innerText = data.sentiment_score > 0 ? "+" + data.sentiment_score : data.sentiment_score;
+                
+                updateSignalUI('res-signal', data.signal);
+                document.getElementById('res-prob').innerText = data.probability;
+                updateSignalUI('res-advice', data.advice);
+                
+                document.getElementById('res-llm').innerHTML = data.reasoning;
+            } else {
+                alert("Backend Error: " + data.error);
+            }
+
+        } catch (error) {
+            console.error("Connection error:", error);
+            document.getElementById('loader').style.display = 'none';
+            alert("Could not connect to the server. Ensure app.py is running on port 5000.");
+        }
+    }
+
+    // Helper to color-code the output based on sentiment/signal
+    function updateSignalUI(elementId, text) {
+        const el = document.getElementById(elementId);
+        el.innerText = text;
+        
+        // Reset classes
+        el.className = 'metric-value';
+        
+        if (text.includes("BULLISH") || text === "BUY") {
+            el.classList.add("signal-bullish");
+        } else if (text.includes("BEARISH") || text === "SELL" || text === "AVOID") {
+            el.classList.add("signal-bearish");
+        } else {
+            el.classList.add("signal-neutral");
+        }
+    }
+</script>
+
+</body>
+</html>
