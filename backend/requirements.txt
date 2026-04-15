@@ -3,7 +3,8 @@ flask-cors
 yfinance
 pandas
 numpy
-tensorflow
+tensorflow==2.15.0
+keras==2.15.0
 scikit-learn
 nltk
 groq
