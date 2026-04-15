@@ -146,6 +146,9 @@ def get_llm_reasoning(ticker, signal, advice, current_price, shares):
         # Replaces the raw 401 error with your custom XAI message
         return fallback_message
 
+@app.route('/', methods=['GET'])
+def home():
+    return "🚀 AI Stock Predictor API is Live and Running! Send POST requests to /api/predict"
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
