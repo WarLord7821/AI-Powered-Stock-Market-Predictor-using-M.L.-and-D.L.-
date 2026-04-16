@@ -233,13 +233,14 @@
             // Replace this URL with your actual Render web service URL once deployed
 const BACKEND_URL = 'https://ai-powered-stock-market-predictor-using.onrender.com'; 
 
-const response = await fetch(`${BACKEND_URL}/api/predict`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ ticker: ticker, shares: shares })
-            });
+// Remove the BACKEND_URL variable entirely
+const response = await fetch('/api/predict', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ ticker: ticker, shares: shares })
+});
 
             const data = await response.json();
 
