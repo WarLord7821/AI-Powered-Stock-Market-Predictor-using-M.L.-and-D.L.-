@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from tensorflow.keras.models import load_model
 import joblib
@@ -148,7 +148,8 @@ def get_llm_reasoning(ticker, signal, advice, current_price, shares):
 
 @app.route('/', methods=['GET'])
 def home():
-    return "🚀 AI Stock Predictor API is Live and Running! Send POST requests to /api/predict"
+    # This tells Flask to load your visual dashboard when someone visits the main URL
+    return render_template('index.html')
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
