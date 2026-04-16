@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -63,36 +64,61 @@ except Exception as e:
 
 
 def get_live_sentiment(ticker):
-    """Fetches recent news from yfinance and calculates Vader sentiment."""
-    # Let yfinance natively handle the session and Chrome spoofing
-    ticker_obj = yf.Ticker(ticker)
-    news_data = ticker_obj.news
-    sia = SentimentIntensityAnalyzer()
-    
-    if not news_data:
-        return 0.0
-
-    scores = []
-    for article in news_data[:5]:
-        title = article.get('title', '')
-        score = sia.polarity_scores(title)['compound']
-        scores.append(score)
+    """Fetches recent news from yfinance and calculates Vader sentiment with Graceful Degradation."""
+    try:
+        ticker_obj = yf.Ticker(ticker)
+        news_data = ticker_obj.news
+        sia = SentimentIntensityAnalyzer()
         
-    return sum(scores) / len(scores) if scores else 0.0
+        if not news_data:
+            return 0.0
+
+        scores = []
+        for article in news_data[:5]:
+            title = article.get('title', '')
+            score = sia.polarity_scores(title)['compound']
+            scores.append(score)
+            
+        return sum(scores) / len(scores) if scores else 0.0
+    except Exception as e:
+        print(f"⚠️ News Sentiment Rate Limited, defaulting to neutral: {e}")
+        # Graceful Degradation: If Yahoo blocks the news API, don't crash the app, just return 0
+        return 0.0 
 
 def fetch_and_prepare_data(ticker):
-    """Fetches enough historical data to compute indicators and return the last 30 days."""
-    # Let yfinance natively handle the session and Chrome spoofing
-    df = yf.download(ticker, period="6mo", interval="1d", progress=False)
+    """Fetches historical data with SRE Exponential Backoff to bypass rate limits."""
+    max_retries = 3
+    df = pd.DataFrame()
     
+    # SRE Fix: Exponential Backoff Retry Loop
+    for attempt in range(max_retries):
+        try:
+            # Switch to history() API instead of download() to bypass strict bulk limits
+            ticker_obj = yf.Ticker(ticker)
+            df = ticker_obj.history(period="6mo", interval="1d")
+            
+            if not df.empty:
+                break # Success! Exit the retry loop
+        except Exception as e:
+            print(f"⚠️ Yahoo API Rate Limit Hit (Attempt {attempt+1}/{max_retries}) - Retrying...")
+        
+        # Wait 1 second, then 2 seconds, then 4 seconds before trying again
+        time.sleep(2 ** attempt) 
+        
     if df.empty:
-        raise ValueError(f"No data found for ticker {ticker}")
+        # If it fully fails, send a clean error to the frontend instead of crashing Gunicorn
+        raise ValueError(f"Yahoo Finance is temporarily rate-limiting Render's shared IP. Please try again in 60 seconds.")
 
-    # Flatten multi-index if yfinance returns one
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    
+    # history() returns the index as 'Date', let's reset it to a column
     df.reset_index(inplace=True)
+    
+    # Ensure column name consistency
+    if 'Datetime' in df.columns:
+        df.rename(columns={'Datetime': 'Date'}, inplace=True)
+        
+    # Clean the timezone data so rolling calculations don't break
+    df['Date'] = pd.to_datetime(df['Date']).dt.tz_localize(None)
+
     df.sort_values(by='Date', ascending=True, inplace=True)
     df.dropna(subset=['Close'], inplace=True)
 
