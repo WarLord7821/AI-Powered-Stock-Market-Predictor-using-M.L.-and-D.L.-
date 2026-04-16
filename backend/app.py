@@ -34,7 +34,7 @@ except Exception as e:
     LLM_AVAILABLE = False
 
 # --- LOAD ML ASSETS ---
-MODEL_PATH = 'model/stock_lstm.h5'
+MODEL_PATH = 'model/stock_lstm.keras'
 SCALER_PATH = 'model/scaler.pkl'
 SEQUENCE_LENGTH = 30
 
