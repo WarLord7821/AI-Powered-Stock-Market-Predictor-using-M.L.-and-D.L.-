@@ -2,7 +2,6 @@ import os
 import numpy as np
 import pandas as pd
 import yfinance as yf
-import requests
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from tensorflow.keras.models import Sequential
@@ -63,18 +62,10 @@ except Exception as e:
     print(f"⚠️ Warning: Could not load model/scaler. Error: {e}")
 
 
-# --- YAHOO FINANCE RATE LIMIT BYPASS ---
-# Disguises the cloud server as a standard Windows/Chrome web browser
-yf_session = requests.Session()
-yf_session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
-})
-
-
 def get_live_sentiment(ticker):
     """Fetches recent news from yfinance and calculates Vader sentiment."""
-    # Using the spoofed session here
-    ticker_obj = yf.Ticker(ticker, session=yf_session)
+    # Let yfinance natively handle the session and Chrome spoofing
+    ticker_obj = yf.Ticker(ticker)
     news_data = ticker_obj.news
     sia = SentimentIntensityAnalyzer()
     
@@ -91,8 +82,8 @@ def get_live_sentiment(ticker):
 
 def fetch_and_prepare_data(ticker):
     """Fetches enough historical data to compute indicators and return the last 30 days."""
-    # Using the spoofed session here for the historical data download
-    df = yf.download(ticker, period="6mo", interval="1d", progress=False, session=yf_session)
+    # Let yfinance natively handle the session and Chrome spoofing
+    df = yf.download(ticker, period="6mo", interval="1d", progress=False)
     
     if df.empty:
         raise ValueError(f"No data found for ticker {ticker}")
