@@ -4,7 +4,8 @@ import pandas as pd
 import yfinance as yf
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Input, LSTM, Dense, Dropout
 import joblib
 from groq import Groq
 
@@ -39,11 +40,26 @@ SCALER_PATH = 'model/scaler.pkl'
 SEQUENCE_LENGTH = 30
 
 try:
-    lstm_model = load_model(MODEL_PATH)
+
+    # 1. Build the exact skeleton of your Colab model directly in Python
+    lstm_model = Sequential([
+        Input(shape=(30, 6)),
+        LSTM(50, return_sequences=True),
+        Dropout(0.2),
+        LSTM(50, return_sequences=False),
+        Dropout(0.2),
+        Dense(1, activation='sigmoid')
+    ])
+    
+    # 2. Pour the trained weights into the skeleton (Bypasses the buggy JSON reader!)
+    lstm_model.load_weights(MODEL_PATH)
+    
+    # 3. Load the scaler
     data_scaler = joblib.load(SCALER_PATH)
-    print("✅ Model and Scaler loaded successfully.")
+    print("✅ Model skeleton built and Weights loaded successfully.")
+    
 except Exception as e:
-    print(f"⚠️ Warning: Could not load model/scaler. Ensure they exist in the 'model/' folder. Error: {e}")
+    print(f"⚠️ Warning: Could not load model/scaler. Error: {e}")
 
 
 def get_live_sentiment(ticker):
