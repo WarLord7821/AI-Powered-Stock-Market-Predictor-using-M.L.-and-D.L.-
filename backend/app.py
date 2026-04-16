@@ -1,4 +1,6 @@
 import os
+import socket
+socket.setdefaulttimeout(15)
 import time
 import numpy as np
 import pandas as pd
